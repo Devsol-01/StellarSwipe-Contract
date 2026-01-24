@@ -29,10 +29,10 @@ jobs:
           workspaces: stellar-swipe/contracts/stellar-swipe
       
       - name: Format check
-        run: cd stellar-swipe/contracts/stellar-swipe && cargo fmt --check
+        run: cd contracts/stellar-swipe && cargo fmt --check
       
       - name: Clippy
-        run: cd stellar-swipe/contracts/stellar-swipe && cargo clippy -- -D warnings
+        run: cd contracts/stellar-swipe && cargo clippy -- -D warnings
 
       - name: Tests
         run: cd contracts/stellar-swipe && cargo test
