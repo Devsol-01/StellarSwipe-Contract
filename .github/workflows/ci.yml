@@ -26,16 +26,16 @@ jobs:
       - name: Cache dependencies
         uses: Swatinem/rust-cache@v2
         with:
-          workspaces: contracts/stellar-swipe
+          workspaces: stellar-swipe/contracts/stellar-swipe
       
       - name: Format check
-        run: cd contracts/stellar-swipe && cargo fmt --check
+        run: cd stellar-swipe/contracts/stellar-swipe && cargo fmt --check
       
       - name: Clippy
-        run: cd contracts/stellar-swipe && cargo clippy -- -D warnings
+        run: cd stellar-swipe/contracts/stellar-swipe && cargo clippy -- -D warnings
 
       - name: Tests
-        run: cd contracts/stellar-swipe && cargo test
+        run: cd stellar-swipe/contracts/stellar-swipe && cargo test
       
       - name: Build
-        run: cd contracts/stellar-swipe && cargo build --target wasm32-unknown-unknown
+        run: cd stellar-swipe/contracts/stellar-swipe && cargo build --target wasm32-unknown-unknown
