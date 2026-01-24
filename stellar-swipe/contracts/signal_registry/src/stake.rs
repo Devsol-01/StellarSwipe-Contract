@@ -21,19 +21,28 @@ pub enum ContractError {
 
 
 // Example stake function
-pub fn stake(env: &Env, storage: &mut Map<Address, StakeInfo>, provider: &Address, amount: i128) -> Result<(), ContractError> {
+pub fn stake(
+    env: &Env,
+    storage: &mut Map<Address, StakeInfo>,
+    provider: &Address,
+    amount: i128,
+) -> Result<(), ContractError> {
     if amount <= 0 {
         return Err(ContractError::InvalidStakeAmount);
     }
 
-    let mut info = storage.get(provider).unwrap_or(StakeInfo {
+    // Clone provider because Map::get expects Address, not &Address
+    let mut info = storage.get(provider.clone()).unwrap_or(StakeInfo {
         amount: 0,
         last_signal_time: 0,
         locked_until: 0,
     });
 
     info.amount += amount;
+
+    // Map::set also expects Address by value
     storage.set(provider.clone(), info);
 
     Ok(())
 }
+
