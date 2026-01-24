@@ -35,7 +35,7 @@ jobs:
         run: cd stellar-swipe/contracts/market && cargo clippy -- -D warnings
 
       - name: Tests
-        run: cd contracts/market && cargo test
+        run: cd contracts/stellar-swipe && cargo test
       
       - name: Build
-        run: cd contracts/market && cargo build --target wasm32-unknown-unknown
+        run: cd contracts/stellar-swipe && cargo build --target wasm32-unknown-unknown
