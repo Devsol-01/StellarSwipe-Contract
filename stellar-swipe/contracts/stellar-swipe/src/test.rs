@@ -8,6 +8,8 @@ use soroban_sdk::{testutils::Address as _, Env};
 #[test]
 fn create_and_read_signal() {
     let env = Env::default();
+    env.mock_all_auths(); // 👈 IMPORTANT
+
     let contract_id = env.register_contract(None, SignalRegistry);
     let client = SignalRegistryClient::new(&env, &contract_id);
 
@@ -31,6 +33,8 @@ fn create_and_read_signal() {
 #[test]
 fn provider_stats_initialized() {
     let env = Env::default();
+    env.mock_all_auths(); // 👈 IMPORTANT
+
     let contract_id = env.register_contract(None, SignalRegistry);
     let client = SignalRegistryClient::new(&env, &contract_id);
 
