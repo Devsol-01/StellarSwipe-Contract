@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 use soroban_sdk::{contracttype, Address, Env, Map, String};
 use crate::stake::{can_submit_signal, StakeInfo, DEFAULT_MINIMUM_STAKE};
 
