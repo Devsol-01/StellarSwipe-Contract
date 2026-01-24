@@ -75,7 +75,7 @@ impl SignalRegistry {
     }
 
     fn validate_asset_pair(env: &Env, asset_pair: &String) {
-        let bytes: Bytes = asset_pair.clone().into_bytes();
+        let bytes: Bytes = asset_pair.clone().to_bytes();
 
         let mut has_slash = false;
         for i in 0..bytes.len() {
