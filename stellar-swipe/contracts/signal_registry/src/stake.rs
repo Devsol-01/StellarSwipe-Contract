@@ -1,156 +1,139 @@
-#![no_std]
+use soroban_sdk::{Address, Env, Map};
+use crate::error::ContractError;
 
-use soroban_sdk::{contract, contractimpl, contracttype, Address, Env, Map, symbol_short, contractevent};
+pub const DEFAULT_MINIMUM_STAKE: i128 = 100_000_000; // 100 XLM in stroops
+pub const UNSTAKE_LOCK_PERIOD: u64 = 7 * 24 * 60 * 60; // 7 days in seconds
 
-/// Information about a provider's stake
-#[contracttype]
+/// Stake information per provider
 #[derive(Clone)]
 pub struct StakeInfo {
-    pub amount: i128,           // Amount staked (XLM stroops)
-    pub last_signal_time: u64,  // Timestamp of last signal submission
-}
-
-// Default minimum stake: 100 XLM (expressed in stroops)
-pub const DEFAULT_MINIMUM_STAKE: i128 = 100_000_000;
-
-// Lock period after last signal: 7 days
-pub const UNSTAKE_LOCK_PERIOD: u64 = 7 * 24 * 60 * 60;
-
-/// Event types for stake/unstake
-#[contractevent]
-pub struct StakeEvent {
-    pub provider: Address,
     pub amount: i128,
+    pub last_signal_time: u64,
+    pub locked_until: u64,
 }
 
-// Storage key for all stakes
-const STAKES_KEY: &str = "stakes";
-
-#[contract]
-pub struct StakeRegistry;
-
-#[contractimpl]
-impl StakeRegistry {
-    /// Stake XLM into the contract
-    pub fn stake(env: Env, provider: Address, amount: i128) {
-        if amount <= 0 {
-            panic!("Stake amount must be positive");
-        }
-
-        // Load stakes map
-        let mut stakes: Map<Address, StakeInfo> =
-            env.storage().get(STAKES_KEY).unwrap_or_default();
-
-        let mut info = stakes.get(&provider).unwrap_or(StakeInfo {
-            amount: 0,
-            last_signal_time: 0,
-        });
-
-        info.amount += amount;
-
-        stakes.set(provider.clone(), info.clone());
-        env.storage().set(STAKES_KEY, &stakes);
-
-        // Emit stake event
-        env.events().publish(StakeEvent { provider, amount: info.amount });
+/// Add stake for a provider
+pub fn stake(env: &Env, storage: &mut Map<Address, StakeInfo>, provider: &Address, amount: i128) -> Result<(), ContractError> {
+    if amount <= 0 {
+        return Err(ContractError::InvalidStakeAmount);
     }
 
-    /// Unstake XLM after lock period
-    pub fn unstake(env: Env, provider: Address) -> i128 {
-        let mut stakes: Map<Address, StakeInfo> =
-            env.storage().get(STAKES_KEY).unwrap_or_default();
+    let mut info = storage.get(provider).unwrap_or(StakeInfo {
+        amount: 0,
+        last_signal_time: 0,
+        locked_until: 0,
+    });
 
-        let mut info = stakes.get(&provider).expect("No stake found for provider");
+    info.amount += amount;
+    storage.set(provider.clone(), info);
 
+    Ok(())
+}
+
+/// Unstake a provider's funds
+pub fn unstake(env: &Env, storage: &mut Map<Address, StakeInfo>, provider: &Address) -> Result<i128, ContractError> {
+    let mut info = storage.get(provider).ok_or(ContractError::NoStakeFound)?;
+
+    let now = env.ledger().timestamp();
+    if now < info.locked_until {
+        return Err(ContractError::StakeLocked);
+    }
+
+    if info.amount <= 0 {
+        return Err(ContractError::NoStakeFound);
+    }
+
+    let amount = info.amount;
+    info.amount = 0;
+    storage.set(provider.clone(), info);
+
+    Ok(amount)
+}
+
+/// Verify if a provider meets the minimum stake requirement
+pub fn verify_stake(storage: &Map<Address, StakeInfo>, provider: &Address, minimum: i128) -> Result<(), ContractError> {
+    let info = storage.get(provider).ok_or(ContractError::NoStakeFound)?;
+
+    if info.amount < minimum {
+        return Err(ContractError::InsufficientStake);
+    }
+
+    Ok(())
+}
+
+/// Update last signal timestamp and lock stake
+pub fn update_last_signal(storage: &mut Map<Address, StakeInfo>, provider: &Address, now: u64) -> Result<(), ContractError> {
+    let mut info = storage.get(provider).ok_or(ContractError::NoStakeFound)?;
+    info.last_signal_time = now;
+    info.locked_until = now + UNSTAKE_LOCK_PERIOD;
+    storage.set(provider.clone(), info);
+    Ok(())
+}
+
+/// Get stake info
+pub fn get_stake(storage: &Map<Address, StakeInfo>, provider: &Address) -> StakeInfo {
+    storage.get(provider).unwrap_or(StakeInfo {
+        amount: 0,
+        last_signal_time: 0,
+        locked_until: 0,
+    })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use soroban_sdk::{testutils::Address as TestAddress, Env, Map, Address};
+
+    fn setup_env() -> Env {
+        Env::default()
+    }
+
+    fn sample_provider(env: &Env, id: u8) -> Address {
+        <Address as TestAddress>::generate(env)
+    }
+
+    #[test]
+    fn test_stake_and_unstake_flow() {
+        let env = setup_env();
+        let provider = sample_provider(&env, 1);
+        let mut storage: Map<Address, StakeInfo> = Map::new();
+
+        // Stake 100 XLM
+        stake(&env, &mut storage, &provider, 100_000_000).unwrap();
+
+        let info = get_stake(&storage, &provider);
+        assert_eq!(info.amount, 100_000_000);
+
+        // Update last signal
         let now = env.ledger().timestamp();
-        if now < info.last_signal_time + UNSTAKE_LOCK_PERIOD {
-            panic!("Stake is locked until 7 days after last signal");
-        }
+        update_last_signal(&mut storage, &provider, now).unwrap();
 
-        if info.amount <= 0 {
-            panic!("No staked funds to withdraw");
-        }
+        // Attempt unstake before lock period
+        let res = unstake(&env, &mut storage, &provider);
+        assert!(res.is_err());
 
-        let amount = info.amount;
-        info.amount = 0;
+        // Simulate 7 days passing
+        let later = now + UNSTAKE_LOCK_PERIOD;
+        let mut info = storage.get(&provider).unwrap();
+        info.locked_until = later;
+        storage.set(provider.clone(), info);
 
-        stakes.set(provider.clone(), info);
-        env.storage().set(STAKES_KEY, &stakes);
-
-        // Emit unstake event
-        env.events().publish(StakeEvent { provider, amount });
-
-        amount
+        // Unstake succeeds
+        let withdrawn = unstake(&env, &mut storage, &provider).unwrap();
+        assert_eq!(withdrawn, 100_000_000);
     }
 
-    /// Verify minimum stake before submitting a signal
-    pub fn verify_stake(env: Env, provider: Address, minimum_stake: i128) {
-        let stakes: Map<Address, StakeInfo> =
-            env.storage().get(STAKES_KEY).unwrap_or_default();
+    #[test]
+    fn test_verify_minimum_stake() {
+        let mut storage: Map<Address, StakeInfo> = Map::new();
+        let env = setup_env();
+        let provider = sample_provider(&env, 2);
 
-        let info = stakes.get(&provider).expect("No stake found");
+        stake(&env, &mut storage, &provider, 50_000_000).unwrap();
+        let res = verify_stake(&storage, &provider, 100_000_000);
+        assert!(res.is_err());
 
-        if info.amount < minimum_stake {
-            panic!("Insufficient stake to submit signal");
-        }
-    }
-
-    /// Update last signal time (call after successful signal submission)
-    pub fn update_last_signal_time(env: Env, provider: Address) {
-        let mut stakes: Map<Address, StakeInfo> =
-            env.storage().get(STAKES_KEY).unwrap_or_default();
-
-        let mut info = stakes.get(&provider).expect("No stake found");
-        info.last_signal_time = env.ledger().timestamp();
-
-        stakes.set(provider.clone(), info);
-        env.storage().set(STAKES_KEY, &stakes);
-    }
-
-    /// Get stake info for a provider
-    pub fn get_stake(env: Env, provider: Address) -> StakeInfo {
-        let stakes: Map<Address, StakeInfo> =
-            env.storage().get(STAKES_KEY).unwrap_or_default();
-
-        stakes.get(&provider).unwrap_or(StakeInfo {
-            amount: 0,
-            last_signal_time: 0,
-        })
+        stake(&env, &mut storage, &provider, 60_000_000).unwrap();
+        verify_stake(&storage, &provider, 100_000_000).unwrap();
     }
 }
-
-// ----------------- TESTS -----------------
-// #[cfg(test)]
-// mod tests {
-//     use super::*;
-//     use soroban_sdk::testutils::Address as _;
-//     use soroban_sdk::Env;
-
-//     #[test]
-//     fn test_stake_and_unstake_flow() {
-//         let env = Env::default();
-//         env.mock_all_auths();
-
-//         let provider = Address::generate(&env);
-//         let contract_id = env.register_contract(None, StakeRegistry);
-//         let client = StakeRegistryClient::new(&env, &contract_id);
-
-//         // Stake 100 XLM
-//         client.stake(&provider, 100_000_000);
-
-//         // Check stake info
-//         let info = client.get_stake(&provider);
-//         assert_eq!(info.amount, 100_000_000);
-
-//         // Try unstake before lock period -> should fail
-//         let res = std::panic::catch_unwind(|| client.unstake(&provider));
-//         assert!(res.is_err());
-
-//         // Simulate 7 days passing
-//         env.ledger().set_timestamp(env.ledger().timestamp() + UNSTAKE_LOCK_PERIOD);
-
-//         // Unstake succeeds
-//         let withdrawn = client.unstake(&provider);
-//         assert_eq!(withdrawn, 100_000_000);
-//     }
-// }
