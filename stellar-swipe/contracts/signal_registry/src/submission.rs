@@ -33,6 +33,7 @@ pub enum Error {
 }
 
 #[allow(clippy::too_many_arguments)]
+[allow(clippy::manual_range_contains)];
 pub fn submit_signal(
     env: &Env,
     storage: &mut Map<u64, Signal>,
@@ -54,7 +55,6 @@ pub fn submit_signal(
     let asset_bytes = asset_pair.to_bytes();
     let has_slash = asset_bytes.iter().any(|b| b == b'/');
     let len = asset_bytes.len();
-    [allow(clippy::manual_range_contains)];
     if !has_slash || len < 5 || len > 20 {
         return Err(Error::InvalidAssetPair);
     }
