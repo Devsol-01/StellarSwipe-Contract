@@ -15,28 +15,7 @@ pub struct ExecutionResult {
 }
 
 /// ==========================
-/// Helpers
-/// ==========================
-
-/// Simulated on-chain balance check
-pub fn has_sufficient_balance(
-    env: &Env,
-    user: &Address,
-    _asset: &u32,
-    amount: i128,
-) -> bool {
-    let key = (user.clone(), "balance");
-    let balance: i128 = env
-        .storage()
-        .temporary()
-        .get(&key)
-        .unwrap_or(0);
-
-    balance >= amount
-}
-
-/// ==========================
-/// Market Order Execution
+/// Market Order
 /// ==========================
 
 pub fn execute_market_order(
@@ -70,7 +49,7 @@ pub fn execute_market_order(
 }
 
 /// ==========================
-/// Limit Order Execution
+/// Limit Order
 /// ==========================
 
 pub fn execute_limit_order(
@@ -112,13 +91,24 @@ pub fn execute_limit_order(
 mod tests {
     use super::*;
     use soroban_sdk::{
-        testutils::{Address as _, Ledger},
+        testutils::{Address as _, LedgerInfo},
         Address, Env,
     };
 
     fn setup_env() -> (Env, Address) {
         let env = Env::default();
         let contract_id = Address::generate(&env);
+
+        env.as_contract(&contract_id, || {
+            env.ledger().set(LedgerInfo {
+                timestamp: 1_000,
+                protocol_version: 20,
+                sequence_number: 1,
+                network_id: [0; 32],
+                base_reserve: 10,
+            });
+        });
+
         (env, contract_id)
     }
 
@@ -137,12 +127,6 @@ mod tests {
         let user = Address::generate(&env);
 
         env.as_contract(&contract_id, || {
-            env.ledger().set_timestamp(1_000);
-
-            env.storage()
-                .temporary()
-                .set(&(user.clone(), "balance"), &1_000);
-
             env.storage()
                 .temporary()
                 .set(&("liquidity", 1u64), &500);
@@ -160,12 +144,6 @@ mod tests {
         let user = Address::generate(&env);
 
         env.as_contract(&contract_id, || {
-            env.ledger().set_timestamp(1_000);
-
-            env.storage()
-                .temporary()
-                .set(&(user.clone(), "balance"), &1_000);
-
             env.storage()
                 .temporary()
                 .set(&("liquidity", 2u64), &100);
@@ -183,8 +161,6 @@ mod tests {
         let user = Address::generate(&env);
 
         env.as_contract(&contract_id, || {
-            env.ledger().set_timestamp(1_000);
-
             env.storage()
                 .temporary()
                 .set(&("market_price", 3u64), &150);
@@ -202,12 +178,10 @@ mod tests {
         let user = Address::generate(&env);
 
         env.as_contract(&contract_id, || {
-            env.ledger().set_timestamp(1_000);
-
             let signal = Signal {
                 signal_id: 4,
                 price: 100,
-                expiry: 999, // already expired
+                expiry: 999, // expired
                 base_asset: 1,
             };
 
