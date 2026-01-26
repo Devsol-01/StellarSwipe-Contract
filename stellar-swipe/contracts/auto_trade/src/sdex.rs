@@ -1,5 +1,5 @@
 use soroban_sdk::{contracttype, Address, Env};
-use soroban_sdk::testutils::Ledger; // needed for .set()
+
 
 use crate::errors::AutoTradeError;
 use crate::storage::Signal;
@@ -95,9 +95,7 @@ pub fn execute_limit_order(
     })
 }
 
-/// ==========================
-/// Test helpers
-/// ==========================
+
 #[cfg(test)]
 mod tests {
     use super::*;
