@@ -100,7 +100,10 @@ mod tests {
     use crate::errors::AutoTradeError;
     use crate::storage::Signal;
 
-    use soroban_sdk::{testutils::Address as _, Address, Env};
+        use soroban_sdk::{
+        testutils::{Address as _, Ledger},
+        Address, Env,
+    };
 
     fn setup_env() -> (Env, Address) {
         let env = Env::default();
