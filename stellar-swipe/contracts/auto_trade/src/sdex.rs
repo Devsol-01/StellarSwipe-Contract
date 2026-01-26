@@ -96,20 +96,22 @@ pub fn execute_limit_order(
     })
 }
 
+
 #[cfg(test)]
 mod tests {
     use super::*;
-    use soroban_sdk::{Env, Address, symbol_short};
+    use soroban_sdk::{Env, symbol_short};
+    use soroban_sdk::testutils::{Address, Ledger}; // <-- important!
 
-    // Create Env + contract context
-    fn setup_env() -> (Env, Address) {
+    /// Helper to setup the environment and a contract ID
+    fn setup_env() -> (Env, soroban_sdk::Address) {
         let env = Env::default();
-        let contract_id = Address::generate(&env);
-        // Only set timestamp, no protocol version
-        env.ledger().set_timestamp(1_000);
+        let contract_id = Address::generate(&env); // generate test address
+        env.ledger().set_timestamp(1_000);         // set ledger timestamp
         (env, contract_id)
     }
 
+    /// Helper to create a signal
     fn setup_signal(env: &Env, id: u64) -> Signal {
         Signal {
             signal_id: id,
@@ -125,14 +127,14 @@ mod tests {
         let user = Address::generate(&env);
 
         env.as_contract(&contract_id, || {
-            // Set liquidity for the signal
-            env.storage()
-                .temporary()
-                .set(&(symbol_short!("liquidity"), 1u64), &500i128);
+            // Set liquidity in temporary storage
+            let key = (symbol_short!("liquidity"), 1u64);
+            env.storage().temporary().set(&key, &500i128);
 
             let signal = setup_signal(&env, 1);
             let res = execute_market_order(&env, &user, &signal, 400).unwrap();
             assert_eq!(res.executed_amount, 400);
+            assert_eq!(res.executed_price, 100);
         });
     }
 
@@ -143,13 +145,13 @@ mod tests {
 
         env.as_contract(&contract_id, || {
             // Set partial liquidity
-            env.storage()
-                .temporary()
-                .set(&(symbol_short!("liquidity"), 2u64), &100i128);
+            let key = (symbol_short!("liquidity"), 2u64);
+            env.storage().temporary().set(&key, &100i128);
 
             let signal = setup_signal(&env, 2);
             let res = execute_market_order(&env, &user, &signal, 300).unwrap();
             assert_eq!(res.executed_amount, 100);
+            assert_eq!(res.executed_price, 100);
         });
     }
 
@@ -159,14 +161,14 @@ mod tests {
         let user = Address::generate(&env);
 
         env.as_contract(&contract_id, || {
-            // Set market price above limit price
-            env.storage()
-                .temporary()
-                .set(&(symbol_short!("price"), 3u64), &150i128);
+            // Set market price above signal price
+            let key = (symbol_short!("price"), 3u64);
+            env.storage().temporary().set(&key, &150i128);
 
             let signal = setup_signal(&env, 3);
             let res = execute_limit_order(&env, &user, &signal, 200).unwrap();
             assert_eq!(res.executed_amount, 0);
+            assert_eq!(res.executed_price, 0);
         });
     }
 
@@ -176,11 +178,10 @@ mod tests {
         let user = Address::generate(&env);
 
         env.as_contract(&contract_id, || {
-            // Expired signal
             let signal = Signal {
                 signal_id: 4,
                 price: 100,
-                expiry: env.ledger().timestamp() - 1,
+                expiry: env.ledger().timestamp() - 1, // expired
                 base_asset: 1,
             };
 
