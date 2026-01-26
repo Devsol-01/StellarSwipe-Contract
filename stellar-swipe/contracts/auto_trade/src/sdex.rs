@@ -1,5 +1,4 @@
-use soroban_sdk::{contracttype, Address, Env};
-
+use soroban_sdk::{contracttype, Address, Env, symbol_short};
 
 use crate::errors::AutoTradeError;
 use crate::storage::Signal;
@@ -23,7 +22,7 @@ pub fn has_sufficient_balance(
     _asset: &u32,
     amount: i128,
 ) -> bool {
-    let key = (user.clone(), "balance");
+    let key = (user.clone(), symbol_short!("balance"));
     let balance: i128 = env.storage().temporary().get(&key).unwrap_or(0);
     balance >= amount
 }
@@ -43,10 +42,11 @@ pub fn execute_market_order(
         return Err(AutoTradeError::SignalExpired);
     }
 
+    let key = (symbol_short!("liquidity"), signal.signal_id);
     let available_liquidity: i128 = env
         .storage()
         .temporary()
-        .get(&("liquidity", signal.signal_id))
+        .get(&key)
         .unwrap_or(amount);
 
     if available_liquidity <= 0 {
@@ -76,10 +76,11 @@ pub fn execute_limit_order(
         return Err(AutoTradeError::SignalExpired);
     }
 
+    let key = (symbol_short!("price"), signal.signal_id);
     let market_price: i128 = env
         .storage()
         .temporary()
-        .get(&("market_price", signal.signal_id))
+        .get(&key)
         .unwrap_or(signal.price);
 
     if market_price > signal.price {
@@ -95,28 +96,25 @@ pub fn execute_limit_order(
     })
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;
-    use soroban_sdk::testutils::{Ledger, LedgerInfo};
-     use soroban_sdk::env::{Env, Address}  
+    use soroban_sdk::testutils::{Ledger, LedgerInfo, Address as _};
+    use soroban_sdk::{Env, Address, symbol_short};
 
     fn setup_env() -> (Env, Address) {
         let env = Env::default();
         let contract_id = Address::generate(&env);
 
-        env.as_contract(&contract_id, || {
-            env.ledger().set(LedgerInfo {
-                timestamp: 1_000,
-                protocol_version: 20,
-                sequence_number: 1,
-                network_id: [0; 32],
-                base_reserve: 10,
-                max_entry_ttl: 1000,
-                min_persistent_entry_ttl: 100,
-                min_temp_entry_ttl: 100,
-            });
+        env.ledger().set(LedgerInfo {
+            timestamp: 1_000,
+            protocol_version: 20,
+            sequence_number: 1,
+            network_id: [0; 32],
+            base_reserve: 10,
+            max_entry_ttl: 1000,
+            min_persistent_entry_ttl: 100,
+            min_temp_entry_ttl: 100,
         });
 
         (env, contract_id)
@@ -137,9 +135,10 @@ mod tests {
         let user = Address::generate(&env);
 
         env.as_contract(&contract_id, || {
+            let key = (symbol_short!("liquidity"), 1u64);
             env.storage()
                 .temporary()
-                .set(&("liquidity", 1u64), &500);
+                .set(&key, &500i128);
 
             let signal = setup_signal(&env, 1);
             let res = execute_market_order(&env, &user, &signal, 400).unwrap();
@@ -153,9 +152,10 @@ mod tests {
         let user = Address::generate(&env);
 
         env.as_contract(&contract_id, || {
+            let key = (symbol_short!("liquidity"), 2u64);
             env.storage()
                 .temporary()
-                .set(&("liquidity", 2u64), &100);
+                .set(&key, &100i128);
 
             let signal = setup_signal(&env, 2);
             let res = execute_market_order(&env, &user, &signal, 300).unwrap();
@@ -169,9 +169,10 @@ mod tests {
         let user = Address::generate(&env);
 
         env.as_contract(&contract_id, || {
+            let key = (symbol_short!("price"), 3u64);
             env.storage()
                 .temporary()
-                .set(&("market_price", 3u64), &150);
+                .set(&key, &150i128);
 
             let signal = setup_signal(&env, 3);
             let res = execute_limit_order(&env, &user, &signal, 200).unwrap();
