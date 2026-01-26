@@ -21,7 +21,7 @@ pub fn has_sufficient_balance(
 /// MARKET ORDER
 pub fn execute_market_order(
     env: &Env,
-    user: &Address,
+    _user: &Address,
     signal: &Signal,
     amount: i128,
 ) -> Result<ExecutionResult, AutoTradeError> {
@@ -45,7 +45,7 @@ pub fn execute_market_order(
 /// LIMIT ORDER
 pub fn execute_limit_order(
     env: &Env,
-    user: &Address,
+    _user: &Address,
     signal: &Signal,
     amount: i128,
 ) -> Result<ExecutionResult, AutoTradeError> {
