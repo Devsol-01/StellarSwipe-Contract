@@ -23,7 +23,7 @@ pub enum OrderType {
 }
 
 #[contracttype]
-#[derive(Clone)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum TradeStatus {
     Pending,
     PartiallyFilled,
@@ -32,7 +32,7 @@ pub enum TradeStatus {
 }
 
 #[contracttype]
-#[derive(Clone)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Trade {
     pub signal_id: u64,
     pub user: Address,
@@ -44,6 +44,7 @@ pub struct Trade {
 }
 
 #[contracttype]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct TradeResult {
     pub trade: Trade,
 }
