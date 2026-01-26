@@ -101,13 +101,14 @@ pub fn execute_limit_order(
 mod tests {
     use super::*;
     use soroban_sdk::{Env, symbol_short};
-    use soroban_sdk::testutils::{Address, Ledger}; // <-- important!
+    use soroban_sdk::testutils::{Address as TestAddress, Ledger}; // Import trait
 
     /// Helper to setup the environment and a contract ID
     fn setup_env() -> (Env, soroban_sdk::Address) {
         let env = Env::default();
-        let contract_id = Address::generate(&env); // generate test address
-        env.ledger().set_timestamp(1_000);         // set ledger timestamp
+        // Fully-qualified call to generate
+        let contract_id = <soroban_sdk::Address as TestAddress>::generate(&env);
+        env.ledger().set_timestamp(1_000);
         (env, contract_id)
     }
 
@@ -124,7 +125,7 @@ mod tests {
     #[test]
     fn market_order_full_fill() {
         let (env, contract_id) = setup_env();
-        let user = Address::generate(&env);
+        let user = <soroban_sdk::Address as TestAddress>::generate(&env);
 
         env.as_contract(&contract_id, || {
             // Set liquidity in temporary storage
@@ -141,7 +142,7 @@ mod tests {
     #[test]
     fn market_order_partial_fill() {
         let (env, contract_id) = setup_env();
-        let user = Address::generate(&env);
+        let user = <soroban_sdk::Address as TestAddress>::generate(&env);
 
         env.as_contract(&contract_id, || {
             // Set partial liquidity
@@ -158,7 +159,7 @@ mod tests {
     #[test]
     fn limit_order_not_filled() {
         let (env, contract_id) = setup_env();
-        let user = Address::generate(&env);
+        let user = <soroban_sdk::Address as TestAddress>::generate(&env);
 
         env.as_contract(&contract_id, || {
             // Set market price above signal price
@@ -175,7 +176,7 @@ mod tests {
     #[test]
     fn expired_signal_rejected() {
         let (env, contract_id) = setup_env();
-        let user = Address::generate(&env);
+        let user = <soroban_sdk::Address as TestAddress>::generate(&env);
 
         env.as_contract(&contract_id, || {
             let signal = Signal {
