@@ -1,6 +1,5 @@
 #![allow(dead_code)]
-use soroban_sdk::{contracttype, Address, Env, symbol_short};
-
+use soroban_sdk::{contracttype, symbol_short, Address, Env};
 
 use crate::errors::AutoTradeError;
 use crate::storage::Signal;
@@ -18,12 +17,7 @@ pub struct ExecutionResult {
 /// ==========================
 /// Balance Check
 /// ==========================
-pub fn has_sufficient_balance(
-    env: &Env,
-    user: &Address,
-    _asset: &u32,
-    amount: i128,
-) -> bool {
+pub fn has_sufficient_balance(env: &Env, user: &Address, _asset: &u32, amount: i128) -> bool {
     let key = (user.clone(), symbol_short!("balance"));
     let balance: i128 = env.storage().temporary().get(&key).unwrap_or(0);
     balance >= amount
@@ -45,11 +39,7 @@ pub fn execute_market_order(
     }
 
     let key = (symbol_short!("liquidity"), signal.signal_id);
-    let available_liquidity: i128 = env
-        .storage()
-        .temporary()
-        .get(&key)
-        .unwrap_or(amount);
+    let available_liquidity: i128 = env.storage().temporary().get(&key).unwrap_or(amount);
 
     if available_liquidity <= 0 {
         return Err(AutoTradeError::InsufficientLiquidity);
@@ -79,11 +69,7 @@ pub fn execute_limit_order(
     }
 
     let key = (symbol_short!("price"), signal.signal_id);
-    let market_price: i128 = env
-        .storage()
-        .temporary()
-        .get(&key)
-        .unwrap_or(signal.price);
+    let market_price: i128 = env.storage().temporary().get(&key).unwrap_or(signal.price);
 
     if market_price > signal.price {
         return Ok(ExecutionResult {
@@ -98,12 +84,11 @@ pub fn execute_limit_order(
     })
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;
-    use soroban_sdk::{contract, Env, Address, symbol_short};
-    use soroban_sdk::testutils::{Ledger, Address as TestAddress};
+    use soroban_sdk::testutils::{Address as TestAddress, Ledger};
+    use soroban_sdk::{contract, symbol_short, Address, Env};
 
     #[contract]
     struct TestContract;

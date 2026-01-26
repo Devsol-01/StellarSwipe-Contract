@@ -1,14 +1,12 @@
 #![no_std]
 
-use soroban_sdk::{
-    contract, contractimpl, contracttype, Address, Env, Symbol,
-};
+use soroban_sdk::{contract, contractimpl, contracttype, Address, Env, Symbol};
 
+mod errors;
 mod sdex;
 mod storage;
-mod errors;
 
-// use sdex::*;
+use crate::storage::DataKey;
 use errors::AutoTradeError;
 
 /// ==========================
@@ -50,15 +48,6 @@ pub struct TradeResult {
 }
 
 /// ==========================
-/// Storage Keys
-/// ==========================
-
-#[contracttype]
-enum DataKey {
-    Trades(Address, u64), // (user, signal_id)
-}
-
-/// ==========================
 /// Contract
 /// ==========================
 
@@ -79,61 +68,31 @@ impl AutoTradeContract {
         order_type: OrderType,
         amount: i128,
     ) -> Result<TradeResult, AutoTradeError> {
-        // ----------------------
-        // Basic validation
-        // ----------------------
         if amount <= 0 {
             return Err(AutoTradeError::InvalidAmount);
         }
 
         user.require_auth();
 
-        // ----------------------
-        // Validate signal
-        // ----------------------
-        let signal = storage::get_signal(&env, signal_id)
-            .ok_or(AutoTradeError::SignalNotFound)?;
+        let signal = storage::get_signal(&env, signal_id).ok_or(AutoTradeError::SignalNotFound)?;
 
         if env.ledger().timestamp() > signal.expiry {
             return Err(AutoTradeError::SignalExpired);
         }
 
-        // ----------------------
-        // Authorization check
-        // ----------------------
         if !storage::is_authorized(&env, &user) {
             return Err(AutoTradeError::Unauthorized);
         }
 
-        // ----------------------
-        // Balance check
-        // ----------------------
-        let balance_ok = sdex::has_sufficient_balance(
-            &env,
-            &user,
-            &signal.base_asset,
-            amount,
-        );
-
-        if !balance_ok {
+        if !sdex::has_sufficient_balance(&env, &user, &signal.base_asset, amount) {
             return Err(AutoTradeError::InsufficientBalance);
         }
 
-        // ----------------------
-        // Execute order on SDEX
-        // ----------------------
         let execution = match order_type {
-            OrderType::Market => {
-                sdex::execute_market_order(&env, &user, &signal, amount)?
-            }
-            OrderType::Limit => {
-                sdex::execute_limit_order(&env, &user, &signal, amount)?
-            }
+            OrderType::Market => sdex::execute_market_order(&env, &user, &signal, amount)?,
+            OrderType::Limit => sdex::execute_limit_order(&env, &user, &signal, amount)?,
         };
 
-        // ----------------------
-        // Determine trade status
-        // ----------------------
         let status = if execution.executed_amount == 0 {
             TradeStatus::Failed
         } else if execution.executed_amount < amount {
@@ -142,9 +101,6 @@ impl AutoTradeContract {
             TradeStatus::Filled
         };
 
-        // ----------------------
-        // Persist trade
-        // ----------------------
         let trade = Trade {
             signal_id,
             user: user.clone(),
@@ -155,17 +111,13 @@ impl AutoTradeContract {
             status,
         };
 
-        env.storage().persistent().set(
-            &DataKey::Trades(user.clone(), signal_id),
-            &trade,
-        );
+        env.storage()
+            .persistent()
+            .set(&DataKey::Trades(user.clone(), signal_id), &trade);
 
-        // ----------------------
-        // Emit event
-        // ----------------------
         #[allow(deprecated)]
         env.events().publish(
-            (Symbol::new(&env, "trade_executed"), user, signal_id),
+            (Symbol::new(&env, "trade_executed"), user.clone(), signal_id),
             trade.clone(),
         );
 
