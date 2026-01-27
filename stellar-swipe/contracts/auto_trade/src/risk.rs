@@ -53,12 +53,11 @@ pub enum RiskDataKey {
 /// ==========================
 /// Risk Configuration Management
 /// ==========================
-
 pub fn get_risk_config(env: &Env, user: &Address) -> RiskConfig {
     env.storage()
         .persistent()
         .get(&RiskDataKey::UserRiskConfig(user.clone()))
-        .unwrap_or_else(|| RiskConfig::default())
+        .unwrap_or_default()
 }
 
 pub fn set_risk_config(env: &Env, user: &Address, config: &RiskConfig) {
@@ -70,7 +69,6 @@ pub fn set_risk_config(env: &Env, user: &Address, config: &RiskConfig) {
 /// ==========================
 /// Position Management
 /// ==========================
-
 pub fn get_user_positions(env: &Env, user: &Address) -> Map<u32, Position> {
     env.storage()
         .persistent()
@@ -101,7 +99,6 @@ pub fn update_position(env: &Env, user: &Address, asset_id: u32, amount: i128, p
 /// ==========================
 /// Trade History Management
 /// ==========================
-
 pub fn get_trade_history(env: &Env, user: &Address) -> Vec<TradeRecord> {
     env.storage()
         .persistent()
@@ -128,7 +125,6 @@ pub fn add_trade_record(env: &Env, user: &Address, signal_id: u64, amount: i128)
 /// ==========================
 /// Price Management
 /// ==========================
-
 pub fn get_asset_price(env: &Env, asset_id: u32) -> Option<i128> {
     env.storage()
         .temporary()
@@ -144,7 +140,6 @@ pub fn set_asset_price(env: &Env, asset_id: u32, price: i128) {
 /// ==========================
 /// Risk Checks
 /// ==========================
-
 /// Check if daily trade limit is exceeded
 pub fn check_daily_trade_limit(
     env: &Env,
