@@ -121,8 +121,7 @@ fn assign_ranks_and_build(
             let curr = &sorted.get(i).unwrap().1;
             let next = &sorted.get(i_plus_1).unwrap().1;
             let tied = if by_success_rate {
-                curr.success_rate == next.success_rate
-                    && curr.total_signals == next.total_signals
+                curr.success_rate == next.success_rate && curr.total_signals == next.total_signals
             } else {
                 curr.total_volume == next.total_volume
             };
