@@ -48,6 +48,7 @@ pub fn get_user_trade_count(env: &Env, user: &Address) -> u64 {
 }
 
 /// Record a trade to history. Called after successful execution.
+#[allow(clippy::too_many_arguments)]
 pub fn record_trade(
     env: &Env,
     user: &Address,
@@ -107,7 +108,7 @@ pub fn get_trade_history(env: &Env, user: &Address, offset: u32, limit: u32) -> 
     };
 
     let mut result = Vec::new(env);
-    let total = count as u64;
+    let total = count;
     let mut taken = 0u32;
     let mut skipped = 0u32;
 

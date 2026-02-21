@@ -41,8 +41,8 @@ pub fn get_portfolio(env: &Env, user: &Address) -> Portfolio {
                 let current_value_xlm = position.amount * current_price;
                 let unrealized_pnl = (current_price - position.entry_price) * position.amount;
 
-                total_value_xlm = total_value_xlm + current_value_xlm;
-                total_pnl = total_pnl + unrealized_pnl;
+                total_value_xlm += current_value_xlm;
+                total_pnl += unrealized_pnl;
 
                 assets.push_back(AssetHolding {
                     asset_id,
