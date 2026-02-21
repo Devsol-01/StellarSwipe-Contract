@@ -200,7 +200,10 @@ mod tests {
     #[test]
     fn test_xlm_usdc_with_issuer_valid() {
         let env = Env::default();
-        let pair = s(&env, "XLM/USDC:GDUKMGUGDZQK6YHYA5Z6AY2G4XDSZPSZ3SW5UN3ARVMO6QSRDWP5YLEX");
+        let pair = s(
+            &env,
+            "XLM/USDC:GDUKMGUGDZQK6YHYA5Z6AY2G4XDSZPSZ3SW5UN3ARVMO6QSRDWP5YLEX",
+        );
         assert!(validate_asset_pair(&env, &pair).is_ok());
     }
 
@@ -223,8 +226,14 @@ mod tests {
     #[test]
     fn test_invalid_format_empty_base() {
         let env = Env::default();
-        let pair = s(&env, "/USDC:GDUKMGUGDZQK6YHYA5Z6AY2G4XDSZPSZ3SW5UN3ARVMO6QSRDWP5YLEX");
-        assert_eq!(validate_asset_pair(&env, &pair), Err(AssetPairError::InvalidFormat));
+        let pair = s(
+            &env,
+            "/USDC:GDUKMGUGDZQK6YHYA5Z6AY2G4XDSZPSZ3SW5UN3ARVMO6QSRDWP5YLEX",
+        );
+        assert_eq!(
+            validate_asset_pair(&env, &pair),
+            Err(AssetPairError::InvalidFormat)
+        );
     }
 
     #[test]
@@ -256,7 +265,10 @@ mod tests {
     #[test]
     fn test_xlm_btc_valid() {
         let env = Env::default();
-        let pair = s(&env, "XLM/BTC:GDUKMGUGDZQK6YHYA5Z6AY2G4XDSZPSZ3SW5UN3ARVMO6QSRDWP5YLEX");
+        let pair = s(
+            &env,
+            "XLM/BTC:GDUKMGUGDZQK6YHYA5Z6AY2G4XDSZPSZ3SW5UN3ARVMO6QSRDWP5YLEX",
+        );
         assert!(validate_asset_pair(&env, &pair).is_ok());
     }
 }
