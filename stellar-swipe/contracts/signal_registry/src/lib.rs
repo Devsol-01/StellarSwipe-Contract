@@ -1,6 +1,7 @@
 #![no_std]
 
 mod admin;
+mod analytics;
 mod errors;
 #[allow(deprecated)]
 mod events;
@@ -693,6 +694,30 @@ impl SignalRegistry {
     }
 
     /* =========================
+ feature/analytics-system
+       ANALYTICS FUNCTIONS
+    ========================== */
+
+    /// Get provider analytics (requires min 10 signals)
+    pub fn get_provider_analytics(
+        env: Env,
+        provider: Address,
+    ) -> Option<analytics::ProviderAnalytics> {
+        let signals = Self::get_signals_map(&env);
+        analytics::calculate_provider_analytics(&env, &signals, &provider)
+    }
+
+    /// Get trending asset pairs in last N hours
+    pub fn get_trending_assets(env: Env, window_hours: u64) -> Vec<(String, u32)> {
+        let signals = Self::get_signals_map(&env);
+        analytics::get_trending_assets(&env, &signals, window_hours)
+    }
+
+    /// Get global analytics (24h metrics)
+    pub fn get_global_analytics(env: Env) -> analytics::GlobalAnalytics {
+        let signals = Self::get_signals_map(&env);
+        analytics::calculate_global_analytics(&env, &signals)
+=======
        SIGNAL IMPORT FUNCTIONS
     ========================== */
 
@@ -739,9 +764,14 @@ impl SignalRegistry {
         external_id: String,
     ) -> Option<u64> {
         import::get_signal_by_external_id(&env, &provider, &external_id)
+ main
     }
 }
 
 mod test;
+ feature/analytics-system
+mod test_analytics;
+=======
 mod test_import;
+ main
 mod test_performance;
