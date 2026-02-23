@@ -14,6 +14,7 @@ mod social;
 mod stake;
 mod submission;
 mod types;
+mod query;
 
 use admin::{
     get_admin, get_admin_config, get_pause_info, init_admin, is_trading_paused, require_not_paused,
@@ -25,7 +26,7 @@ use soroban_sdk::{contract, contractimpl, contracttype, Address, Env, Map, Strin
 use stellar_swipe_common::{validate_asset_pair as validate_asset_pair_common, AssetPairError};
 use types::{
     Asset, FeeBreakdown, ProviderPerformance, Signal, SignalAction, SignalPerformanceView,
-    SignalStatus, TradeExecution,
+    SignalStatus, TradeExecution, SortOption, SignalSummary
 };
 
 const MAX_EXPIRY_SECONDS: u64 = 30 * 24 * 60 * 60;
@@ -241,6 +242,7 @@ impl SignalRegistry {
             status: SignalStatus::Active,
             // Initialize performance tracking fields
             executions: 0,
+            successful_executions: 0,
             total_volume: 0,
             total_roi: 0,
         };
@@ -487,12 +489,24 @@ impl SignalRegistry {
     }
 
     /* =========================
-       EXPIRY MANAGEMENT
+       API: QUERY SIGNALS
     ========================== */
 
-    /// Get all active (non-expired) signals for feed.
-    /// If followed_only is true, only returns signals from providers `user` follows.
-    pub fn get_active_signals(env: Env, user: Address, followed_only: bool) -> Vec<Signal> {
+    /// Get all active (non-expired) signals for feed, paginated and sorted.
+    pub fn get_active_signals(
+        env: Env,
+        offset: u32,
+        limit: u32,
+        sort_by: SortOption,
+        provider: Option<Address>,
+    ) -> Vec<SignalSummary> {
+        let signals_map = Self::get_signals_map(&env);
+        query::get_active_signals(&env, &signals_map, provider, offset, limit, sort_by)
+    }
+
+    /// Legacy fallback if front-ends rely on Old behavior 
+    /// (Wait, let's keep it as another name if needed, or just let users migrate to the new `get_active_signals`)
+    pub fn get_active_signals_archived(env: Env, user: Address, followed_only: bool) -> Vec<Signal> {
         let signals = Self::get_signals_map(&env);
         if followed_only {
             let followed = social::get_followed_providers(&env, &user);
