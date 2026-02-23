@@ -1,6 +1,27 @@
 use soroban_sdk::{contracttype, Address, String, Symbol};
 
 #[contracttype]
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum SortOption {
+    PerformanceDesc,
+    RecencyDesc,
+    VolumeDesc,
+}
+
+#[contracttype]
+#[derive(Clone, Debug)]
+pub struct SignalSummary {
+    pub id: u64,
+    pub provider: Address,
+    pub asset_pair: String,
+    pub action: SignalAction,
+    pub price: i128,
+    pub success_rate: u32,
+    pub total_copies: u32,
+    pub timestamp: u64,
+}
+
+#[contracttype]
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum SignalStatus {
     Pending,
@@ -32,6 +53,7 @@ pub struct Signal {
     pub status: SignalStatus,
     // Performance tracking fields
     pub executions: u32,    // Number of trade executions for this signal
+    pub successful_executions: u32, // Number of successful trade executions
     pub total_volume: i128, // Cumulative volume across all executions
     pub total_roi: i128,    // Cumulative ROI in basis points (10000 = 100%)
 }

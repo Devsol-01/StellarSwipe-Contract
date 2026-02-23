@@ -56,6 +56,14 @@ pub fn update_signal_stats(signal: &mut Signal, trade: &TradeExecution) {
         .checked_add(1)
         .expect("executions overflow");
 
+    // Increment successful validations if ROI > 0
+    if trade.roi > 0 {
+        signal.successful_executions = signal
+            .successful_executions
+            .checked_add(1)
+            .expect("successful executions overflow");
+    }
+
     // Add trade volume
     signal.total_volume = signal
         .total_volume
