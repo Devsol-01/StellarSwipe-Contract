@@ -122,3 +122,18 @@ pub fn emit_collaborative_signal_published(env: &Env, signal_id: u64) {
     let topics = (Symbol::new(env, "collab_signal_published"), signal_id);
     env.events().publish(topics, ());
 }
+
+pub fn emit_combo_created(env: &Env, combo_id: u64, provider: Address, component_count: u32) {
+    let topics = (Symbol::new(env, "combo_created"), combo_id, provider);
+    env.events().publish(topics, component_count);
+}
+
+pub fn emit_combo_executed(env: &Env, combo_id: u64, executor: Address, combined_roi: i128) {
+    let topics = (Symbol::new(env, "combo_executed"), combo_id, executor);
+    env.events().publish(topics, combined_roi);
+}
+
+pub fn emit_combo_cancelled(env: &Env, combo_id: u64, provider: Address) {
+    let topics = (Symbol::new(env, "combo_cancelled"), combo_id, provider);
+    env.events().publish(topics, ());
+}
