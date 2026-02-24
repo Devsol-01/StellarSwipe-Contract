@@ -190,6 +190,32 @@ impl SignalRegistry {
         counter
     }
 
+    fn next_trade_id(env: &Env) -> u64 {
+        let mut counter: u64 = env
+            .storage()
+            .instance()
+            .get(&StorageKey::TradeCounter)
+            .unwrap_or(0);
+        counter = counter.checked_add(1).expect("trade id overflow");
+        env.storage()
+            .instance()
+            .set(&StorageKey::TradeCounter, &counter);
+        counter
+    }
+
+    fn get_trade_executions_map(env: &Env) -> Map<u64, TradeExecution> {
+        env.storage()
+            .instance()
+            .get(&StorageKey::TradeExecutions)
+            .unwrap_or(Map::new(env))
+    }
+
+    fn save_trade_executions_map(env: &Env, map: &Map<u64, TradeExecution>) {
+        env.storage()
+            .instance()
+            .set(&StorageKey::TradeExecutions, map);
+    }
+
     fn get_signals_map(env: &Env) -> Map<u64, Signal> {
         env.storage()
             .instance()
