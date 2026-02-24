@@ -86,3 +86,12 @@ pub enum CollaborationError {
     NotCollaborative = 503,
     PendingApproval = 504,
 }
+
+#[contracterror]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord)]
+#[repr(u32)]
+pub enum ExportError {
+    UnsupportedFormat = 700,
+    NoDataInRange = 701,
+    ExportTooLarge = 702,
+}

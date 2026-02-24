@@ -122,3 +122,8 @@ pub fn emit_collaborative_signal_published(env: &Env, signal_id: u64) {
     let topics = (Symbol::new(env, "collab_signal_published"), signal_id);
     env.events().publish(topics, ());
 }
+
+pub fn emit_data_exported(env: &Env, requester: Address, entity_type: u32, record_count: u32) {
+    let topics = (Symbol::new(env, "data_exported"), requester);
+    env.events().publish(topics, (entity_type, record_count));
+}
