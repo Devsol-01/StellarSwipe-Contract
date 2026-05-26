@@ -13,6 +13,7 @@ mod performance;
 mod social;
 mod stake;
 mod submission;
+mod templates;
 mod types;
 
 use admin::{
@@ -23,6 +24,7 @@ use errors::AdminError;
 pub use leaderboard::{get_leaderboard, LeaderboardMetric, ProviderLeaderboard};
 use soroban_sdk::{contract, contractimpl, contracttype, Address, Env, Map, String, Vec};
 use stellar_swipe_common::{validate_asset_pair as validate_asset_pair_common, AssetPairError};
+pub use templates::{SignalTemplate, SignalTemplateOverrides, StoredSignalTemplate};
 use types::{
     Asset, FeeBreakdown, ProviderPerformance, Signal, SignalAction, SignalPerformanceView,
     SignalStatus, TradeExecution,
@@ -40,6 +42,7 @@ pub enum StorageKey {
     Signals,
     ProviderStats,
     TradeExecutions,
+    SignalTemplates,
 }
 
 #[contractimpl]
@@ -188,6 +191,19 @@ impl SignalRegistry {
             .set(&StorageKey::ProviderStats, map);
     }
 
+    fn get_signal_templates_map(env: &Env) -> Map<Address, Vec<StoredSignalTemplate>> {
+        env.storage()
+            .instance()
+            .get(&StorageKey::SignalTemplates)
+            .unwrap_or(Map::new(env))
+    }
+
+    fn save_signal_templates_map(env: &Env, map: &Map<Address, Vec<StoredSignalTemplate>>) {
+        env.storage()
+            .instance()
+            .set(&StorageKey::SignalTemplates, map);
+    }
+
     fn validate_asset_pair(env: &Env, asset_pair: &String) -> Result<(), AdminError> {
         validate_asset_pair_common(env, asset_pair).map_err(|e| match e {
             AssetPairError::InvalidFormat
@@ -268,6 +284,40 @@ impl SignalRegistry {
     pub fn get_provider_stats(env: Env, provider: Address) -> Option<ProviderPerformance> {
         let stats = Self::get_provider_stats_map(&env);
         stats.get(provider)
+    }
+
+    pub fn save_signal_template(
+        env: Env,
+        provider: Address,
+        template: SignalTemplate,
+    ) -> Result<u32, AdminError> {
+        provider.require_auth();
+        Self::validate_asset_pair(&env, &template.asset_pair)?;
+
+        let mut templates_map = Self::get_signal_templates_map(&env);
+        let template_id =
+            templates::save_signal_template(&env, &mut templates_map, provider, template)
+                .map_err(|_| AdminError::InvalidParameter)?;
+        Self::save_signal_templates_map(&env, &templates_map);
+
+        Ok(template_id)
+    }
+
+    pub fn submit_signal_from_template(
+        env: Env,
+        provider: Address,
+        template_id: u32,
+        overrides: SignalTemplateOverrides,
+    ) -> Result<u64, AdminError> {
+        let templates_map = Self::get_signal_templates_map(&env);
+        let template =
+            templates::get_signal_template(&templates_map, provider.clone(), template_id)
+                .map_err(|_| AdminError::InvalidParameter)?;
+        let (asset_pair, action, expiry_hours, price, rationale) =
+            templates::merge_template(template, overrides);
+        let expiry = env.ledger().timestamp() + expiry_hours * 60 * 60;
+
+        Self::create_signal(env, provider, asset_pair, action, price, rationale, expiry)
     }
 
     /* =========================
