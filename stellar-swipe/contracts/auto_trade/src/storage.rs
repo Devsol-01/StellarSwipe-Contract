@@ -13,9 +13,18 @@ pub struct Signal {
 }
 
 #[contracttype]
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct RateLimitInfo {
+    pub user: Address,
+    pub is_limited: bool,
+    pub expires_at: u64,
+}
+
+#[contracttype]
 pub enum DataKey {
     Trades(Address, u64),
     Signal(u64),
+    RateLimitInfo(Address),
 }
 
 /// Get a signal by ID
